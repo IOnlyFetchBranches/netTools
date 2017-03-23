@@ -81,13 +81,17 @@ public class clientApplet {
                                 StringBuilder incomingMessage=new StringBuilder();
 
                                 while (Thread.currentThread().isAlive()) {
+
                                     if (inbox !=null){
                                         incomingMessage.append((char)inbox.read());
                                     }
 
-                                }
-                                println(incomingMessage.toString());
-                                incomingMessage.delete(0,incomingMessage.length()-1);
+                                            println(incomingMessage.toString());
+
+                                    }
+
+
+
                             }catch(IOException ioe){
                                 errprint(ioe.getMessage());
                             }
