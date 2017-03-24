@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.*;
+import java.rmi.server.ExportException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
 
@@ -78,22 +81,28 @@ public class clientApplet {
                         Thread conversationEngine=new Thread(()->{
                             try {
                                 InputStream inbox=clientSocket.getInputStream();
+                                List<Character> rawMessage = new ArrayList<>();
                                 StringBuilder incomingMessage=new StringBuilder();
+                                boolean isContent = true;
 
-                                while (Thread.currentThread().isAlive()) {
+                                InputStreamReader reader = new InputStreamReader(inbox);
+                                while (1 == 1) {
 
-                                    if (inbox !=null){
-                                        incomingMessage.append((char)inbox.read());
+                                    while (inbox.available() != -1) {
+                                        System.out.print((char) reader.read());
                                     }
+                                    println("\n");
 
-                                            println(incomingMessage.toString());
 
-                                    }
+                                    //errln("Content Received");
+
+                                }
 
 
 
                             }catch(IOException ioe){
                                 errprint(ioe.getMessage());
+                                printStack(ioe);
                             }
                         });
                         conversationEngine.setDaemon(true);
@@ -102,7 +111,6 @@ public class clientApplet {
                             Thread.sleep(2000);
                             println("\nConnection Established...\n");
                         }catch(Exception e){errprint("Sleep Error");};
-
 
 
 
