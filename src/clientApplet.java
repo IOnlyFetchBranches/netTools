@@ -84,7 +84,7 @@ public class clientApplet {
 
                                 try {
                                     print((char) clientSocket.getInputStream().read() + "");
-                                    Thread.sleep(1000);
+                                    Thread.sleep(100);
                                     //print(clientSocket.getInputStream().available() + " ");
 
                                 } catch (Exception e) {

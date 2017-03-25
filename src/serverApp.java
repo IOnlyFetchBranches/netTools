@@ -214,12 +214,14 @@ public class serverApp {
 
                             try {
 
-
+                                /* first method
                                 PrintStream printer = new PrintStream(socketList.get(x).getOutputStream(), true);
                                 printer.write(message.getBytes());
-
-
+                                **/
+                                //better method
                                 outputs.get(x).println(message);
+
+
                                 errln(message);
                             } catch (Exception e) {
                                 e.getLocalizedMessage();
