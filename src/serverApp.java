@@ -13,7 +13,10 @@ import static java.lang.Thread.currentThread;
 public class serverApp {
     static int portnumber;
     public static boolean establishedConnection=false;
-    public static List<Socket> socketList = new ArrayList<>();
+
+
+    private static List<Socket> socketList = new ArrayList<>();
+    private static List<PrintWriter> outputs = new ArrayList<>();
 
     public static void main(String[] args){
         //master loop +control
@@ -69,6 +72,7 @@ public class serverApp {
                 //bind the port
                 //Live time connection Thread
                 Thread listener = new Thread(() -> {
+                    int index = 0;
                     try {
                         ServerSocket listenerServer = new ServerSocket(portnumber);
                         while (Thread.currentThread().isAlive()) {
@@ -78,9 +82,10 @@ public class serverApp {
 
                             println("\n Incoming Connection");
                             try {
-                                Thread.sleep(2000);
                                 socketList.add(newSocket);
-                                println("Ip Connected->" + socketList.get(socketList.size() - 1).getInetAddress());
+                                Thread.sleep(2000);
+
+                                println("Ip Connected->" + newSocket.getInetAddress());
 
 
                             } catch (Exception e) {
@@ -88,13 +93,22 @@ public class serverApp {
                             }
                             //send welcome message;
                             try {
+                                //create printer for new socket and store
+                                PrintWriter printer = new PrintWriter(socketList.get(index).getOutputStream(), true);
+                                outputs.add(printer);
 
-                                PrintStream introOut = new PrintStream(newSocket.getOutputStream(), true);
-                                introOut.println("Hello and welcome to the Server! :) To Exit at any time Type Exit!");
+                                //finally attempt to send message
+
+                                //outputs.get(index).println("Hello, Type exit to Exit!");
+
 
                             } catch (IOException e) {
                                 errln("Stream Error, IntroStreams, Thread: Listener");
                             }
+
+
+                            //advance
+                            index++;
                         }
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -143,15 +157,11 @@ public class serverApp {
 
 
                     while (socketList.size() != 1) {
-
-                        try {
-                            Thread.sleep(1000);
-                        } catch (Exception e) {
-                            e.getLocalizedMessage();
-                        } //waits until one conncts
+                        establishedConnection = false;
+                        //waits until one conncts
                     }
 
-                    Socket initialSocket = socketList.get(0);
+
                     establishedConnection = true;
 
 
@@ -159,41 +169,61 @@ public class serverApp {
 
 
                     //wait for other thread to kill itself
-                    Thread.sleep(5000);
 
 
-                    println("\n\nConnection Established [" + initialSocket.getInetAddress().toString() + "]");
-
+                    println("\n\nConnection Established [" + socketList.get(0).getInetAddress().toString() + "]");
+                /*
                 PrintWriter outToClient =
                         new PrintWriter(initialSocket.getOutputStream(), true);
                 BufferedReader inFromClient = new BufferedReader(
                         new InputStreamReader(initialSocket.getInputStream()));
-                String message = "empty";
+
 
 
                     outToClient.println("Hello! Welcome, to leave just type exit :)" + "~");
                 println("\nHello! Welcome, to leave just type exit :)");
+                **/
 
-
-
-
+                    String message = "empty";
                 //messaging handlers
+                    Scanner scan = new Scanner(System.in);
+
+                    try {
+                        currentThread().sleep(3000);
+                        print("Waiting");
+                    } catch (Exception e) {
+                        errln("Wait error");
+                    }
+
 
                     //output
                 while (Thread.currentThread().isAlive()) {
-                    message = new Scanner(System.in).nextLine();
+                    System.out.println("Number of clients " + socketList.size());
+
+                    message = scan.nextLine();
                     //errln(message); //debug line
 
                     //check for exit
                     if(message.equalsIgnoreCase("exit")){System.exit(0);}
                     //send message to all users connected;
                     for (int x = 0; x < socketList.size(); x++) {
-                        if (socketList.get(x).isConnected()) {
+                        if (1 == 1) {
+
+
+
+
                             try {
-                                socketList.get(x).getOutputStream().write(message.getBytes());
+
+
+                                PrintStream printer = new PrintStream(socketList.get(x).getOutputStream(), true);
+                                printer.write(message.getBytes());
+
+
+                                outputs.get(x).println(message);
                                 errln(message);
-                            } catch (SocketException e) {
+                            } catch (Exception e) {
                                 e.getLocalizedMessage();
+                                System.exit(1);
                             }
                         }
                     }
@@ -201,16 +231,16 @@ public class serverApp {
                 }
 
 
-            } catch (IOException e) {
-                errln("Error binding clientSocket! -> " + e.getCause() + " " + e.getLocalizedMessage() + " in " + e.getClass());
-                reset = true;
+
             } catch (Exception e) {
-            e.getCause();
+
+                    System.exit(1);
 
         }
 
         }catch(Exception e){
-            e.getCause();
+
+                System.exit(1);
         }
 
         }while(reset);

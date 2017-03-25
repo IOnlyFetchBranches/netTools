@@ -79,34 +79,28 @@ public class clientApplet {
 
                         //Input handler Thread
                         Thread conversationEngine=new Thread(()->{
-                            try {
-                                InputStream inbox=clientSocket.getInputStream();
-                                List<Character> rawMessage = new ArrayList<>();
-                                StringBuilder incomingMessage=new StringBuilder();
-                                boolean isContent = true;
-
-                                InputStreamReader reader = new InputStreamReader(inbox);
-                                while (1 == 1) {
-
-                                    while (inbox.available() != -1) {
-                                        System.out.print((char) reader.read());
-                                    }
-                                    println("\n");
+                            while (Thread.currentThread().isAlive()) {
 
 
-                                    //errln("Content Received");
+                                try {
+                                    print((char) clientSocket.getInputStream().read() + "");
+                                    Thread.sleep(1000);
+                                    //print(clientSocket.getInputStream().available() + " ");
 
+                                } catch (Exception e) {
+                                    errprint(e.getMessage());
+                                    System.exit(0);
                                 }
 
 
 
-                            }catch(IOException ioe){
-                                errprint(ioe.getMessage());
-                                printStack(ioe);
+
+
                             }
+
                         });
-                        conversationEngine.setDaemon(true);
-                        conversationEngine.start();
+
+
                         try{
                             Thread.sleep(2000);
                             println("\nConnection Established...\n");
@@ -119,9 +113,13 @@ public class clientApplet {
                         //messaging handlers
                         String message;
                         //output
+                        conversationEngine.setDaemon(true);
+                        conversationEngine.start();
+
                         while (Thread.currentThread().isAlive()) {
                             message = new Scanner(System.in).next();
                             //errln(message); //debug line
+                            print(conversationEngine.isAlive() + "");
 
                             //check for exit
                             if(message.equalsIgnoreCase("exit")){System.exit(0);}
