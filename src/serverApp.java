@@ -12,11 +12,17 @@ import static java.lang.Thread.currentThread;
 
 public class serverApp {
     static int portnumber;
-    public static boolean establishedConnection=false;
 
+    private static boolean hasDisconnect = false;
+    private static boolean isInitial = true;
+
+
+    public static ServerSocket listenerServer;
 
     private static List<Socket> socketList = new ArrayList<>();
     private static List<PrintWriter> outputs = new ArrayList<>();
+    private static List<DataInputStream> inputs = new ArrayList<>();
+    private static List<String> users = new ArrayList<>();
 
     public static void main(String[] args){
         //master loop +control
@@ -43,6 +49,9 @@ public class serverApp {
 
 
                 }
+
+                println("\nServer open! ");
+
             } catch (Exception e) {
                 errln(e.getMessage());
             }
@@ -65,27 +74,34 @@ public class serverApp {
             } while (portError);
 
 
-            //ServerSocket serverSocket = null; //PART OF OLD
+
 
 
             try {
-                //bind the port
-                //Live time connection Thread
+
+                //Live time Monitor
                 Thread listener = new Thread(() -> {
                     int index = 0;
                     try {
-                        ServerSocket listenerServer = new ServerSocket(portnumber);
+                        listenerServer = new ServerSocket(portnumber);
+
                         while (Thread.currentThread().isAlive()) {
                             //setup base
 
                             Socket newSocket = listenerServer.accept();
 
+
+                            if (hasDisconnect) {
+                                hasDisconnect = false;//re-enable;
+                            }
+
                             println("\n Incoming Connection");
                             try {
                                 socketList.add(newSocket);
-                                Thread.sleep(2000);
+
 
                                 println("Ip Connected->" + newSocket.getInetAddress());
+                                Thread.sleep(2000);
 
 
                             } catch (Exception e) {
@@ -93,16 +109,36 @@ public class serverApp {
                             }
                             //send welcome message;
                             try {
-                                //create printer for new socket and store
-                                PrintWriter printer = new PrintWriter(socketList.get(index).getOutputStream(), true);
+
+                                //for Index sync reasons, interrupt ifConnection manger is still cleaning up
+                                if (hasDisconnect) {
+                                    while (hasDisconnect) {
+                                        try {
+                                            Thread.sleep(100);
+                                        } catch (Exception e) {
+                                            printStack(e);
+                                        }
+                                    }
+                                }
+
+
+                                //create printer/reader for new socket and store
+                                PrintWriter printer = new PrintWriter(socketList.get(socketList.size() - 1).getOutputStream(), true);
                                 outputs.add(printer);
+
+
+                                DataInputStream inputReader = new DataInputStream(socketList.get(index).getInputStream());
+
+                                inputs.add(inputReader);
+
+
 
                                 //finally attempt to send message
 
-                                //outputs.get(index).println("Hello, Type exit to Exit!");
+                                outputs.get(outputs.size() - 1).println("Hello, Type exit to Exit!");
 
 
-                            } catch (IOException e) {
+                            } catch (Exception e) {
                                 errln("Stream Error, IntroStreams, Thread: Listener");
                             }
 
@@ -117,59 +153,127 @@ public class serverApp {
                 });
 
 
-                listener.setDaemon(true);
+                //Input handler Thread
+                Thread conversationEngine = new Thread(() -> {
+                    while (Thread.currentThread().isAlive()) {
 
+                        if (hasDisconnect || isInitial) {  //is halt?
+                            continue;
+                        }
+                        while (Thread.currentThread().isAlive()) {
+
+                            try {
+                                print(inputs.get(0).readUTF() + " <-Ready? ");
+                                Thread.sleep(25);
+                                //print(clientSocket.getInputStream().available() + " ");
+                            } catch (Exception e) {
+                                errprint(e.getMessage());
+                                System.exit(0);
+                            }
+                        }
+                    }
+
+
+                });
+                //end reader thread
+
+
+                try {
+                    Thread.sleep(2000);
+
+                } catch (Exception e) {
+                    errprint("Sleep Error");
+                }
+                ;
+
+                Thread connectionManager = new Thread(() -> {
+
+                    while (Thread.currentThread().isAlive()) {
+                        int index = 0;
+
+
+                        while (!hasDisconnect && !isInitial) {
+
+                            for (int x = 0; x < socketList.size(); x++) {
+
+                                try {
+
+
+                                } catch (Exception e) {
+                                    hasDisconnect = true;
+                                    index = x;
+                                    break;
+
+                                }
+
+                            }
+                        }
+
+
+                        if (hasDisconnect) {
+                            println("Detected Leave of socket-> " + index);
+
+                            //remove
+
+
+                            outputs.remove(index);
+                            socketList.remove(index);
+                            if (socketList.size() == 0) {
+                                errln("\n There Are No more Connected People, Going back into Listening Mode!");
+                                while (hasDisconnect) {
+                                    try {
+
+
+                                        while (socketList.size() == 0) {
+                                            try {
+                                                Thread.sleep(500);
+                                                // print("Waiting for Connection");
+                                            } catch (InterruptedException ie) {
+                                                errprint(ie.getLocalizedMessage());
+                                            }
+                                        }
+
+                                    } catch (Exception e) {
+                                        errln("Io Exception, Exiting \n Nerd Stuff-> " + e.getCause());
+                                    }
+                                }
+                                //socketList = tempSockets;
+                                //tempSockets.remove(0);
+                                println("Disconnect Handled");
+
+                            }
+                            println("Disconnect Handled <1");
+                            hasDisconnect = false;
+                        }
+
+
+                    }
+                });
+
+
+                //messaging handlers
+
+                //More Threads;
+
+                listener.setDaemon(true);
                 listener.start();
 
 
-                //OLD IMPLEMENTATION
-                /**
-                 try {
-                 serverSocket = new ServerSocket(portnumber);
-                 } catch (IOException ioe) {
-                 System.err.println("Port is in use, Sorry! Try Again? [y/n]");
-                 boolean correct = true;
-                 do {
-                 String choice = new Scanner(System.in).next();
-                 boolean isY = choice.equalsIgnoreCase("y");
-                 boolean isN = choice.equalsIgnoreCase("n");
-                 switch (isY + "-" + isN) {
-                 case "true-false":
-                 if (!correct) {
-                 correct = true;
-                 }
-                 reset = true;
-                 throw new Exception("Reset-Bypass");
-                 case "false-true":
-                 System.exit(0);
-                 break;
-                 default:
-                 System.err.println("Invalid!");
-                 correct = false;
-                 }
-                 } while (!correct);
-                 }
-                 **/
                 try {
-
-
                     String address = InetAddress.getLocalHost().toString();
-
-
-                    while (socketList.size() != 1) {
-                        establishedConnection = false;
+                    while (socketList.size() < 1) {
+                        isInitial = true;
                         //waits until one conncts
                     }
 
 
-                    establishedConnection = true;
+                    connectionManager.setDaemon(true);
+                    connectionManager.start();
 
 
-
-
-
-                    //wait for other thread to kill itself
-
+                    //Open Incoming message thread
+                    conversationEngine.setDaemon(true);
+                    conversationEngine.start();
 
                     println("\n\nConnection Established [" + socketList.get(0).getInetAddress().toString() + "]");
                 /*
@@ -185,68 +289,72 @@ public class serverApp {
                 **/
 
                     String message = "empty";
-                //messaging handlers
+                    //messaging handlers
                     Scanner scan = new Scanner(System.in);
 
                     try {
                         currentThread().sleep(3000);
-                        print("Waiting");
+                        isInitial = false;
+                        print("Initializing...");
                     } catch (Exception e) {
                         errln("Wait error");
                     }
 
 
                     //output
-                while (Thread.currentThread().isAlive()) {
-                    System.out.println("Number of clients " + socketList.size());
+                    while (Thread.currentThread().isAlive()) {
+                        System.out.println("Number of members " + socketList.size());
 
-                    message = scan.nextLine();
-                    //errln(message); //debug line
+                        message = scan.nextLine();
+                        if (message.equalsIgnoreCase("exit")) {
+                            System.exit(0);
+                        }
 
-                    //check for exit
-                    if(message.equalsIgnoreCase("exit")){System.exit(0);}
-                    //send message to all users connected;
-                    for (int x = 0; x < socketList.size(); x++) {
-                        if (1 == 1) {
+                        //breaker to allow time for ports to be disconnected
+                        if (hasDisconnect) {
+                            errln("Disconnection Handling");
+                            continue;
+                        }
 
 
+                        //check for exit
 
+                        //send message to all users connected;
+                        for (int x = 0; x < socketList.size(); x++) {
+                            if (!hasDisconnect) {
+                                try {
 
-                            try {
-
-                                /* first method
+                                /*
                                 PrintStream printer = new PrintStream(socketList.get(x).getOutputStream(), true);
                                 printer.write(message.getBytes());
                                 **/
-                                //better method
-                                outputs.get(x).println(message);
+                                    outputs.get(x).println(message);
 
-
-                                errln(message);
-                            } catch (Exception e) {
-                                e.getLocalizedMessage();
-                                System.exit(1);
+                                    //errln(message); //debug line
+                                } catch (Exception e) {
+                                    errprint(e.getLocalizedMessage());
+                                    printStack(e);
+                                    System.exit(1);
+                                }
                             }
                         }
+
                     }
+
+
+                } catch (Exception e) {
+                    printStack(e);
+                    System.exit(1);
 
                 }
 
-
-
             } catch (Exception e) {
-
-                    System.exit(1);
-
-        }
-
-        }catch(Exception e){
-
+                printStack(e);
                 System.exit(1);
-        }
+            }
 
         }while(reset);
-        }
+    }
 
 
 
